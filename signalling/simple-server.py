@@ -166,18 +166,18 @@ async def connection_handler(ws, uid):
             if callee_id not in peers:
                 await ws.send('ERROR peer {!r} not found'.format(callee_id))
                 continue
-            if peer_status is not None:
+            if peers[callee_id][2] is not None:
                 await ws.send('ERROR peer {!r} busy'.format(callee_id))
                 continue
-            await ws.send('SESSION_OK')
             wsc = peers[callee_id][0]
             print('Session from {!r} ({!r}) to {!r} ({!r})'
                   ''.format(uid, raddr, callee_id, wsc.remote_address))
-            # Register session
+            # Reserve both peers before sending the acknowledgement can yield.
             peers[uid][2] = peer_status = 'session'
             sessions[uid] = callee_id
             peers[callee_id][2] = 'session'
             sessions[callee_id] = uid
+            await ws.send('SESSION_OK')
         # Requested joining or creation of a room
         elif msg.startswith('ROOM'):
             print('{!r} command {!r}'.format(uid, msg))
@@ -274,3 +274,4 @@ logger.addHandler(logging.StreamHandler())
 
 asyncio.get_event_loop().run_until_complete(wsd)
 asyncio.get_event_loop().run_forever()
+
