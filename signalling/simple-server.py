@@ -249,7 +249,7 @@ else:
     chain_pem = os.path.join(certpath, 'cert.pem')
     key_pem = os.path.join(certpath, 'key.pem')
 
-sslctx = ssl.create_default_context()
+sslctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
 try:
     sslctx.load_cert_chain(chain_pem, keyfile=key_pem)
 except FileNotFoundError:
