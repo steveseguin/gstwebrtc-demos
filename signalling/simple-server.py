@@ -149,8 +149,8 @@ async def connection_handler(ws, uid):
                     print('room {}: {} -> {}: {}'.format(room_id, uid, other_id, msg))
                     await wso.send(msg)
                 elif msg == 'ROOM_PEER_LIST':
-                    room_id = peers[peer_id][2]
-                    room_peers = ' '.join([pid for pid in rooms[room_id] if pid != peer_id])
+                    room_id = peers[uid][2]
+                    room_peers = ' '.join([pid for pid in rooms[room_id] if pid != uid])
                     msg = 'ROOM_PEER_LIST {}'.format(room_peers)
                     print('room {}: -> {}: {}'.format(room_id, uid, msg))
                     await ws.send(msg)
