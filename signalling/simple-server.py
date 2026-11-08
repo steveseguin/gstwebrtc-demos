@@ -41,6 +41,8 @@ sessions = dict()
 # Format: {room_id: {peer1_id, peer2_id, peer3_id, ...}}
 # Room dict with a set of peers in each room
 rooms = dict()
+# Peers accepting ROOM cannot simultaneously become a session callee.
+pending_room_joins = set()
 
 ############### Helper functions ###############
 
@@ -166,18 +168,18 @@ async def connection_handler(ws, uid):
             if callee_id not in peers:
                 await ws.send('ERROR peer {!r} not found'.format(callee_id))
                 continue
-            if peer_status is not None:
+            if peers[callee_id][2] is not None or callee_id in pending_room_joins:
                 await ws.send('ERROR peer {!r} busy'.format(callee_id))
                 continue
-            await ws.send('SESSION_OK')
             wsc = peers[callee_id][0]
             print('Session from {!r} ({!r}) to {!r} ({!r})'
                   ''.format(uid, raddr, callee_id, wsc.remote_address))
-            # Register session
+            # Reserve both peers before sending the acknowledgement can yield.
             peers[uid][2] = peer_status = 'session'
             sessions[uid] = callee_id
             peers[callee_id][2] = 'session'
             sessions[callee_id] = uid
+            await ws.send('SESSION_OK')
         # Requested joining or creation of a room
         elif msg.startswith('ROOM'):
             print('{!r} command {!r}'.format(uid, msg))
@@ -194,7 +196,11 @@ async def connection_handler(ws, uid):
                 # Create room if required
                 rooms[room_id] = set()
             room_peers = ' '.join([pid for pid in rooms[room_id]])
-            await ws.send('ROOM_OK {}'.format(room_peers))
+            pending_room_joins.add(uid)
+            try:
+                await ws.send('ROOM_OK {}'.format(room_peers))
+            finally:
+                pending_room_joins.discard(uid)
             # Enter room
             peers[uid][2] = peer_status = room_id
             rooms[room_id].add(uid)
@@ -274,3 +280,4 @@ logger.addHandler(logging.StreamHandler())
 
 asyncio.get_event_loop().run_until_complete(wsd)
 asyncio.get_event_loop().run_forever()
+
