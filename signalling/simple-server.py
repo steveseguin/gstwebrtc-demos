@@ -93,11 +93,19 @@ async def cleanup_room(uid, room_id):
     if uid not in room_peers:
         return
     room_peers.remove(uid)
-    for pid in room_peers:
-        wsp, paddr, _ = peers[pid]
+    # Sending can yield while another member leaves or joins the room.
+    for pid in tuple(room_peers):
+        peer = peers.get(pid)
+        if peer is None or peer[2] != room_id:
+            continue
+        wsp, paddr, _ = peer
         msg = 'ROOM_PEER_LEFT {}'.format(uid)
         print('room {}: {} -> {}: {}'.format(room_id, uid, pid, msg))
-        await wsp.send(msg)
+        try:
+            await wsp.send(msg)
+        except websockets.ConnectionClosed:
+            # That connection's handler will clean up its own membership.
+            pass
 
 async def remove_peer(uid):
     await cleanup_session(uid)
