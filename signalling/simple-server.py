@@ -15,6 +15,12 @@ import asyncio
 import websockets
 import argparse
 
+# Keep the protocol API used by the two-argument handler below.
+try:
+    from websockets.legacy.server import serve
+except ImportError:  # websockets before the legacy namespace was introduced
+    from websockets import serve
+
 from concurrent.futures._base import TimeoutError
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -261,7 +267,7 @@ sslctx.verify_mode = ssl.CERT_NONE
 
 print("Listening on https://{}:{}".format(*ADDR_PORT))
 # Websocket server
-wsd = websockets.serve(handler, *ADDR_PORT, ssl=sslctx,
+wsd = serve(handler, *ADDR_PORT, ssl=sslctx,
                        # Maximum number of messages that websockets will pop
                        # off the asyncio and OS buffers per connection. See:
                        # https://websockets.readthedocs.io/en/stable/api.html#websockets.protocol.WebSocketCommonProtocol
