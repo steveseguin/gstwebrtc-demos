@@ -198,13 +198,21 @@ async def connection_handler(ws, uid):
             # Enter room
             peers[uid][2] = peer_status = room_id
             rooms[room_id].add(uid)
-            for pid in rooms[room_id]:
+            # Sending can yield while another member leaves or joins the room.
+            for pid in tuple(rooms[room_id]):
                 if pid == uid:
                     continue
-                wsp, paddr, _ = peers[pid]
+                peer = peers.get(pid)
+                if peer is None or peer[2] != room_id:
+                    continue
+                wsp, paddr, _ = peer
                 msg = 'ROOM_PEER_JOINED {}'.format(uid)
                 print('room {}: {} -> {}: {}'.format(room_id, uid, pid, msg))
-                await wsp.send(msg)
+                try:
+                    await wsp.send(msg)
+                except websockets.ConnectionClosed:
+                    # That connection's handler will clean up its membership.
+                    pass
         else:
             print('Ignoring unknown message {!r} from {!r}'.format(msg, uid))
 
